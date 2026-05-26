@@ -136,13 +136,13 @@ After installing the WireGuard app on your phone and importing the config, the V
 
 ## Maintenance
 
-The Pi maintains itself automatically on a weekly schedule (Friday). Two tasks are active out of the box; one requires a one-time setup.
+The Pi maintains itself automatically on a weekly schedule — plus monthly container updates to reduce SD card wear. Two tasks are active out of the box; one requires a one-time setup.
 
 ### Already active (no action needed)
 
 | Task | When | What it does | Triggered by |
 |------|------|-------------|--------------|
-| **Container updates** | Fri 7:00 AM | Watchtower refreshes all Docker images | `watchtower` container (defined in `docker-compose.yml`) |
+| **Container updates** | 1st of month, 7:00 AM | Watchtower refreshes all Docker images (monthly to limit SD wear) | `watchtower` container (defined in `docker-compose.yml`) |
 | **Config backup** | Fri 1:00 AM | Tars `~/pi-zero-homelab/` to `~/backups/` (keeps last 4) | `scripts/backup.sh` — scheduled by cron (set up in `install.sh`) |
 
 ### One-time setup (run this after the stack is up)

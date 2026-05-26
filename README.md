@@ -2,47 +2,45 @@
 
 Pi-hole, Unbound, WireGuard (wg-easy), Filebrowser, nginx and Watchtower, all in Docker, on a Raspberry Pi Zero 2W with 512MB RAM.
 
-## Prerequisites
-
-- Raspberry Pi Zero 2W
-- Pi OS Lite (64-bit), fresh install
-- SSH access to the Pi
-- A router where you can forward UDP ports (for WireGuard)
-- A static LAN IP for the Pi (DHCP reservation on the router, or set it manually)
-
 ## Quick Start
 
 ### 1. Update the Pi
 
 ```
 sudo apt update && sudo apt upgrade -y
+````
+### 2. Enable cgroup memory in kernel's parametres
+
+````
+nano /boot/firmware/cmdline.txt
+````
+add at the end: `cgroup_memory=1 cgroup_enable=memory`
+
+And reboot
+````
 sudo reboot
-```
+````
 
-Wait for the Pi to come back, then reconnect via SSH.
-
-### 2. Clone the repository
+### 3. Clone the repository
 
 ```
 sudo apt install git -y
-git clone <repo-url> pi-zero-homelab
-cd pi-zero-homelab
+git clone https://github.com/deistical-deodorize4/pi02w-privacy-stack
+cd pi02w-privacy-stack
 ```
 
-Replace `<repo-url>` with the actual URL of this repository.
+### 4. Run the install script
 
-### 3. Run the install script
-
-**Run this:** `bash install.sh`
+Run: `bash install.sh`
 
 This is the only script you run directly during initial setup. It does the following, in order:
 
-1. **Creates required directories** -- `files/`, `filebrowser/`, `nginx/html/` for bind mounts used by the containers
-2. **Installs Docker** -- adds the official Docker repository and installs `docker-ce`, `docker-compose-plugin`, and related packages
-3. **Adds your user to the `docker` group** -- so you can run Docker without `sudo` (log out and back in after)
-4. **Reduces swappiness** -- sets `vm.swappiness=10` to minimise SD card wear
+1. **Creates required directories** :  `files/`, `filebrowser/`, `nginx/html/` for bind mounts used by the containers
+2. **Installs Docker** : adds the official Docker repository and installs `docker-ce`, `docker-compose-plugin`, and related packages
+3. **Adds your user to the `docker` group** : so you can run Docker without `sudo` (log out and back in after)
+4. **Reduces swappiness** : sets `vm.swappiness=10` to minimise SD card wear
 
-After the script finishes, **log out and back in** (or reconnect your SSH session) for the Docker group change to take effect.
+After the script finishes, **log out and back in** for the Docker group change to take effect.
 
 ### 4. Configure passwords and settings
 
@@ -51,43 +49,34 @@ cp .env.default .env
 nano .env
 ```
 
-You must edit these values:
-
-- `PIHOLE_WEBPASSWORD` -- password for Pi-hole admin panel
-- `WG_HOST` / `INIT_HOST` -- your public IP or DDNS hostname (e.g. `vpn.example.com` or `1.2.3.4`)
-- `INIT_DNS` -- your Pi's LAN IP (e.g. `192.168.0.15`)
-
-To find your Pi's LAN IP:
-
-```
-hostname -I
-```
 
 If you don't have a static public IP, use a DDNS service like DuckDNS or No-IP and set `WG_HOST` to your DDNS hostname.
 
 ### 5. Start the stack
 
-**Run this:** `docker compose up -d`
+Run: `docker compose up -d`
 
-This creates and starts all containers (unbound, pihole, filebrowser, wg-easy, nginx, watchtower). The first start takes a few minutes because Unbound installs itself on first run.
+This creates and starts all containers (unbound, pihole, filebrowser, wg-easy, nginx, watchtower). 
 
-The `docker-compose.yml` file is the main configuration that ties everything together. When you run `docker compose up -d`, Docker Compose automatically reads these supporting files (you do **not** run them manually):
+The `docker-compose.yml` file is the main configuration that ties everything together. When you run `docker compose up -d`, Docker Compose automatically reads these supporting files
 
 | File | Role | How it's used |
 |------|------|---------------|
-| `unbound-entrypoint.sh` | Unbound first-run installer | Mounted into the `unbound` container. Runs inside the container (not by you) |
+| `unbound-entrypoint.sh` | Unbound first-run installer | Mounted into the `unbound` container. Runs inside the container |
 | `unbound/unbound.conf` | DNS resolver config | Mounted into the `unbound` container. Defines Quad9 DoT upstream |
-| `iptables-nft-wrapper.sh` | nftables fallback | Mounted into the `wg-easy` container at `/usr/sbin/iptables`. Replaces missing `ip_tables` kernel module (Pi OS Trixie ships with nftables only) |
-| `.env` | Secrets and settings | Loaded by `wg-easy` for `WG_HOST`, `INIT_HOST`, `INIT_DNS`, and port config |
+| `iptables-nft-wrapper.sh` | nftables fallback | Mounted into the `wg-easy` container at `/usr/sbin/iptables`. Replaces missing `ip_tables` kernel module|
 
-Check progress:
+After 2-3 mins, check status:
 
 ```
 docker compose ps
-docker logs unbound --tail 10
+or
+docker ps --format "{{.Names}} {{.Status}}"
 ```
 
 Wait until `docker ps` shows all services as `(healthy)`.
+
+>!! Important: check `docker logs filebrowser` to find you auto-generated password. Default credentials are no longer admin/admin.
 
 ### 6. Forward port on your router
 
@@ -111,9 +100,7 @@ First, create an SSH tunnel to access the wg-easy admin UI:
 ssh -L 51821:localhost:51821 pi@<pi-lan-ip>
 ```
 
-Open http://localhost:51821 in your browser. Register the first admin account and log in. Click "Create" to generate a new client, then download the config file or scan the QR code.
-
-Import the config into the WireGuard app on your phone or laptop.
+Open http://localhost:51821 in your browser.
 
 ### 8. Verify phone DNS goes through Pi-hole
 
@@ -128,7 +115,6 @@ With `INIT_DNS` set to your Pi's LAN IP, wg-easy pushes Pi-hole as DNS to every 
 | Filebrowser | http://&lt;pi-ip&gt;:8080 | Any browser on your LAN |
 | wg-easy UI | http://localhost:51821 | SSH tunnel only |
 
-Replace `<pi-ip>` with your Pi's actual LAN IP address.
 
 The wg-easy admin UI is bound to localhost-only for security. Always use an SSH tunnel to access it.
 
@@ -136,7 +122,7 @@ After installing the WireGuard app on your phone and importing the config, the V
 
 ## Maintenance
 
-The Pi maintains itself automatically on a weekly schedule — plus monthly container updates to reduce SD card wear. Two tasks are active out of the box; one requires a one-time setup.
+The Pi maintains itself automatically on a weekly schedule plus monthly container updates to reduce SD card wear.
 
 ### Already active (no action needed)
 
@@ -147,9 +133,9 @@ The Pi maintains itself automatically on a weekly schedule — plus monthly cont
 
 ### One-time setup (run this after the stack is up)
 
-**Run this once:** `bash ~/pi-zero-homelab/scripts/setup-maintenance.sh`
+Run this once: `bash ~/pi02w-privacy-stack/scripts/setup-maintenance.sh`
 
-This enables automatic OS security updates via `unattended-upgrades` (Friday 2:00 AM). You will need your sudo password.
+This enables automatic OS security updates via `unattended-upgrades` (Friday 2:00 AM).
 
 ## Troubleshooting
 
@@ -226,7 +212,7 @@ Then start again from step 3 (configure `.env` and `docker compose up -d`).
 
 ## Security notes
 
-- wg-easy admin UI is bound to 127.0.0.1 -- use an SSH tunnel to access it
+- wg-easy admin UI is bound to 127.0.0.1, always use an SSH tunnel to access it `(ssh -L 51821:localhost:51821 pi@<pi-lan-ip>)`
 - Unbound uses Quad9 DoT (Swiss non-profit, audited privacy policy)
 - Only UDP port 51820 needs to be open on your router
 - WireGuard tunnel encrypts all traffic between your phone and Pi
@@ -236,27 +222,27 @@ Then start again from step 3 (configure `.env` and `docker compose up -d`).
 ```
 pi-zero-homelab/
 │
-├── 🏃 YOU RUN THESE
-│   ├── install.sh                  # Initial setup (Docker, directories, swappiness)
+├── YOU RUN THESE
+│   ├── install.sh                    # Initial setup
 │   └── scripts/setup-maintenance.sh  # One-time: enable OS auto-updates
 │
-├── 🤖 USED AUTOMATICALLY BY DOCKER COMPOSE
-│   ├── docker-compose.yml          # Main config — defines all 6 services
-│   ├── .env.default                # Template — copy to .env and edit
-│   ├── .env                        # Your secrets (gitignored)
+├── USED AUTOMATICALLY BY DOCKER COMPOSE
+│   ├── docker-compose.yml          # Main config, defines all 6 services
+│   ├── .env.default                # Template to copy to .env and edit
+│   ├── .env                        # Your passwds
 │   ├── iptables-nft-wrapper.sh     # nftables → iptables shim for wg-easy
 │   ├── unbound-entrypoint.sh       # Installs Unbound on container first start
 │   └── unbound/
-│       └── unbound.conf            # Unbound DNS config (Quad9 DoT)
+│       └── unbound.conf            # Unbound DNS config
 │
-├── ⏰ RUN ON SCHEDULE (no action needed)
-│   └── scripts/backup.sh           # Friday 1AM cron — tars configs to ~/backups/
+├── RUN ON SCHEDULE (no action needed)
+│   └── scripts/backup.sh     # Friday 1AM cron: tars configs to ~/backups/
 │
-└── 📖 Other
+└── OTHER FILES
     ├── LICENSE
-    ├── README.md                   # This file
-    ├── files/                      # Filebrowser file root (created by install.sh)
-    ├── filebrowser/                # Filebrowser database (created by install.sh)
+    ├── README.md                   
+    ├── files/              # Filebrowser file root (created by install.sh)
+    ├── filebrowser/        # Filebrowser database (created by install.sh)
     └── nginx/
-        └── html/                   # nginx landing page (created by install.sh)
+        └── html/           # nginx page (created by install.sh)
 ```

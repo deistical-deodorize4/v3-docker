@@ -67,15 +67,15 @@ sudo systemctl daemon-reload
 sudo systemctl restart apt-daily.timer apt-daily-upgrade.timer
 
 echo "=== 2/3 Setting up backup cron (every Friday 1:00 AM) ==="
-chmod +x ~/pi-zero-homelab/scripts/backup.sh
+chmod +x ~/pi02w-privacy-stack/scripts/backup.sh
 (
   crontab -l 2>/dev/null | grep -v backup.sh || true
   echo "# Weekly homelab backup (Friday 1:00 AM)"
-  echo "0 1 * * 5 /home/pi/pi-zero-homelab/scripts/backup.sh >> /home/pi/backups/backup.log 2>&1"
+  echo "0 1 * * 5 /home/pi/pi02w-privacy-stack/scripts/backup.sh >> /home/pi/backups/backup.log 2>&1"
 ) | crontab -
 
 echo "=== 3/3 Applying Docker stack changes (Watchtower) ==="
-cd ~/pi-zero-homelab
+cd ~/pi02w-privacy-stack
 docker compose up -d --force-recreate watchtower
 
 echo ""

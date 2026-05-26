@@ -1,0 +1,134 @@
+services:
+
+  unbound:
+    image: alpine:latest
+    container_name: unbound
+    restart: unless-stopped
+    mem_limit: 64m
+    cpus: 0.25
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    volumes:
+      - ./unbound/unbound.conf:/etc/unbound/unbound.conf:ro
+      - ./unbound-entrypoint.sh:/entrypoint.sh:ro
+      - unbound-data:/var/lib/unbound
+    ports:
+      - "127.0.0.1:5335:5335/udp"
+      - "127.0.0.1:5335:5335/tcp"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "drill -p 5335 example.com @127.0.0.1 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - homelab
+
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.25
+    depends_on:
+      - unbound
+    environment:
+      FTLCONF_webserver_api_password: "${PIHOLE_WEBPASSWORD}"
+      FTLCONF_dns_upstreams: "unbound#5335"
+      FTLCONF_dns_listeningMode: "all"
+      FTLCONF_dns_dnssec: "true"
+    volumes:
+      - pihole-data:/etc/pihole
+      - pihole-dnsmasq:/etc/dnsmasq.d
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8081:80/tcp"
+    networks:
+      - homelab
+
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    restart: unless-stopped
+    mem_limit: 32m
+    cpus: 0.25
+    ports:
+      - "8080:80"
+    volumes:
+      - ./files:/srv
+      - ./filebrowser:/database
+    environment:
+      FB_BASEURL: "/"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  wg-easy:
+    image: ghcr.io/wg-easy/wg-easy:15
+    container_name: wg-easy
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.25
+    depends_on:
+      - pihole
+    environment:
+      INSECURE: "true"
+      DISABLE_IPV6: "true"
+      INIT_ENABLED: "true"
+    env_file: .env
+    volumes:
+      - ./wg-easy:/etc/wireguard
+      - /lib/modules:/lib/modules:ro
+      # Override iptables with nftables wrapper (Pi OS Trixie has no ip_tables)
+      - ./iptables-nft-wrapper.sh:/usr/sbin/iptables:ro
+      - ./iptables-nft-wrapper.sh:/usr/sbin/iptables-restore:ro
+    ports:
+      - "${WG_PORT:-51820}:51820/udp"
+      - "127.0.0.1:${WG_UI_PORT:-51821}:51821/tcp"
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      net.ipv4.ip_forward: 1
+      net.ipv4.conf.all.src_valid_mark: 1
+    networks:
+      - homelab
+
+  nginx:
+    image: nginx:stable-alpine-slim
+    container_name: nginx-server
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    volumes:
+      - ./nginx/html:/usr/share/nginx/html
+    mem_limit: 32m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    mem_limit: 32m
+    cpus: 0.25
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_INCLUDE_STOPPED: "true"
+      WATCHTOWER_SCHEDULE: "0 7 * * 5"
+      TZ: "${TZ:-UTC}"
+
+volumes:
+  unbound-data:
+  pihole-data:
+  pihole-dnsmasq:
+
+networks:
+  homelab:

@@ -1,12 +1,12 @@
 #!/bin/bash
 # Weekly backup of Pi Zero 2W homelab config
 # Runs at 1:00 AM Sunday via root cron
-# Restore: tar xzf /path/to/backup.tar.gz -C /home/pi/pi-zero-homelab
+# Restore: tar xzf /path/to/backup.tar.gz -C /home/pi/pi02w-privacy-stack
 
 set -e
 
 BACKUP_DIR="/home/pi/backups"
-SOURCE_DIR="/home/pi/pi-zero-homelab"
+SOURCE_DIR="/home/pi/pi02w-privacy-stack"
 TIMESTAMP=$(date +%Y%m%d_%H%M)
 BACKUP_FILE="${BACKUP_DIR}/homelab-config-${TIMESTAMP}.tar.gz"
 KEEP_LAST=4

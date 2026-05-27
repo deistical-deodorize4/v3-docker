@@ -1,6 +1,8 @@
 # Pi Zero 2W Homelab
 
-Pi-hole, Unbound, WireGuard (wg-easy), Filebrowser, Syncthing, nginx and Watchtower — all in Docker, on a Raspberry Pi Zero 2W with 512MB RAM.
+Pi-hole, Unbound, WireGuard (wg-easy), Filebrowser, Syncthing, nginx and Watchtower, all in Docker, on a Raspberry Pi Zero 2W with only 512MB RAM.
+
+![visuals](https://github.com/deistical-deodorize4/pi02w-privacy-stack/blob/25e1d9ff3f154e40e5110506a0775441624df51c/visuals.jpg)
 
 ## Quick Start
 
@@ -106,11 +108,11 @@ Open http://localhost:51821 in your browser.
 
 With `INIT_DNS` set to your Pi's LAN IP, wg-easy pushes Pi-hole as DNS to every new client. After connecting, your phone's DNS queries appear in the Pi-hole query log at `http://<pi-ip>:8081/admin`. If you don't see queries, recreate the client config in wg-easy to pick up the DNS change.
 
-### 9. Set up Syncthing (optional — automatic file sync)
+### 9. Set up Syncthing (optional: automatic file sync)
 
-Syncthing keeps your Keepass database (PC) and Aegis backups (phone) in sync with the Pi — no cloud.
+Syncthing keeps your local passwd database (PC) and 2FA backups (phone) in sync with the Pi.
 
-**On the Pi** — configure the sync folder:
+On the Pi, configure the sync folder:
 ```
 ssh -L 8384:localhost:8384 pi@<pi-lan-ip>
 ```
@@ -119,13 +121,13 @@ Open http://localhost:8384, click **Default Folder**, set:
 - Folder Path: `/var/syncthing/files/Syncthing`
 - Save
 
-Copy the **Device ID** from the dashboard.
+Copy the Device ID from the dashboard.
 
-**On your PC** — download from [syncthing.net](https://syncthing.net/downloads/), run it, open http://localhost:8384, click **Add Remote Device** and paste the Pi's Device ID. Point a folder to `C:\Users\samuu\Syncthing\` and enable sharing with the Pi.
+**On your PC**: download from [syncthing.net](https://syncthing.net/downloads/), run it, open http://localhost:8384, click **Add Remote Device** and paste the Pi's Device ID. Point a folder to `C:\Users\samuu\Syncthing\` and enable sharing with the Pi.
 
-**On Android** — install Syncthing-Fork from F-Droid, add the Pi's Device ID, share your Aegis export folder.
+**On Android**: install Syncthing-Fork from F-Droid, add the Pi's Device ID, share your 2FA export folder.
 
-Files sync automatically over LAN. They land in `~/pi02w-privacy-stack/files/Syncthing/` on the Pi — accessible via Filebrowser and included in weekly backups.
+Files sync automatically over LAN. They land in `~/pi02w-privacy-stack/files/Syncthing/` on the Pi and are indeed accessible via Filebrowser and included in weekly backups.
 
 ## Accessing the services
 
@@ -257,14 +259,14 @@ pi02w-privacy-stack/
 │       └── unbound.conf            # Unbound DNS config
 │
 ├── RUN ON SCHEDULE (no action needed)
-│   └── scripts/backup.sh     # Friday 1AM cron: tars configs to ~/backups/
+│   └── scripts/backup.sh           # Friday 1AM cron: tars configs to ~/backups/
 │
 └── OTHER FILES
     ├── LICENSE
     ├── README.md                   
     ├── files/              # Filebrowser file root (created by install.sh)
     ├── filebrowser/        # Filebrowser database (created by install.sh)
-    ├── syncthing/          # Syncthing config directory (created by install.sh)
+    ├── syncthing/          # Syncthing directory (created by install.sh)
     └── nginx/
         └── html/           # nginx page (created by install.sh)
 ```

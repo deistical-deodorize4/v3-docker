@@ -132,6 +132,8 @@ services:
     restart: unless-stopped
     mem_limit: 32m
     cpus: 0.25
+    environment:
+      STGUIADDRESS: "0.0.0.0:8384"
     volumes:
       - syncthing-config:/var/syncthing/config
       - ./files:/var/syncthing/files

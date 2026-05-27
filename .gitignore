@@ -149,6 +149,9 @@ id_ed25519
 # WireGuard keys and config — DO NOT COMMIT
 wg-easy/
 
+# Syncthing config — runtime data
+syncthing/
+
 # Docker volume data
 portainer_data/
 

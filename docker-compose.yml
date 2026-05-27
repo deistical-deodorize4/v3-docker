@@ -135,7 +135,7 @@ services:
     environment:
       STGUIADDRESS: "0.0.0.0:8384"
     volumes:
-      - syncthing-config:/var/syncthing/config
+      - ./syncthing/config:/var/syncthing/config
       - ./files:/var/syncthing/files
     ports:
       - "127.0.0.1:8384:8384/tcp"
@@ -152,7 +152,6 @@ volumes:
   unbound-data:
   pihole-data:
   pihole-dnsmasq:
-  syncthing-config:
 
 networks:
   homelab:

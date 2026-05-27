@@ -49,6 +49,9 @@ fi
 # Create filebrowser directories
 mkdir -p files filebrowser
 
+# Create syncthing directories
+mkdir -p syncthing/config
+
 # Update package list and system
 echo "Updating system..."
 sudo apt-get update && sudo apt-get upgrade -y
@@ -101,4 +104,5 @@ IP=$(hostname -I | awk '{print $1}')
 echo "Access Pi-hole admin at http://$IP:8081/admin"
 echo "Access FileBrowser at http://$IP:8080"
 echo "Access nginx landing page at http://$IP"
+echo "Syncthing web UI at http://localhost:8384 (SSH tunnel: ssh -L 8384:localhost:8384 pi@$IP)"
 echo "Pi-hole DNS is on port 53 (configure devices to use $IP as DNS server)"

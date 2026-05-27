@@ -126,10 +126,31 @@ services:
       WATCHTOWER_SCHEDULE: "0 7 1 * *"
       TZ: "${TZ:-UTC}"
 
+  syncthing:
+    image: syncthing/syncthing:latest
+    container_name: syncthing
+    restart: unless-stopped
+    mem_limit: 32m
+    cpus: 0.25
+    volumes:
+      - syncthing-config:/var/syncthing/config
+      - ./files:/var/syncthing/files
+    ports:
+      - "127.0.0.1:8384:8384/tcp"
+      - "22000:22000/tcp"
+      - "22000:22000/udp"
+      - "21027:21027/udp"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   unbound-data:
   pihole-data:
   pihole-dnsmasq:
+  syncthing-config:
 
 networks:
   homelab:

@@ -1,6 +1,6 @@
 # Pi Zero 2W Homelab
 
-Pi-hole, Unbound, WireGuard (wg-easy), Filebrowser, nginx and Watchtower, all in Docker, on a Raspberry Pi Zero 2W with 512MB RAM.
+Pi-hole, Unbound, WireGuard (wg-easy), Filebrowser, Syncthing, nginx and Watchtower — all in Docker, on a Raspberry Pi Zero 2W with 512MB RAM.
 
 ## Quick Start
 
@@ -35,7 +35,7 @@ Run: `bash install.sh`
 
 This is the only script you run directly during initial setup. It does the following, in order:
 
-1. **Creates required directories** :  `files/`, `filebrowser/`, `nginx/html/` for bind mounts used by the containers
+1. **Creates required directories** :  `files/`, `filebrowser/`, `syncthing/`, `nginx/html/` for bind mounts used by the containers
 2. **Installs Docker** : adds the official Docker repository and installs `docker-ce`, `docker-compose-plugin`, and related packages
 3. **Adds your user to the `docker` group** : so you can run Docker without `sudo` (log out and back in after)
 4. **Reduces swappiness** : sets `vm.swappiness=10` to minimise SD card wear
@@ -56,7 +56,7 @@ If you don't have a static public IP, use a DDNS service like DuckDNS or No-IP a
 
 Run: `docker compose up -d`
 
-This creates and starts all containers (unbound, pihole, filebrowser, wg-easy, nginx, watchtower). 
+This creates and starts all containers (unbound, pihole, filebrowser, syncthing, wg-easy, nginx, watchtower). 
 
 The `docker-compose.yml` file is the main configuration that ties everything together. When you run `docker compose up -d`, Docker Compose automatically reads these supporting files
 
@@ -106,6 +106,27 @@ Open http://localhost:51821 in your browser.
 
 With `INIT_DNS` set to your Pi's LAN IP, wg-easy pushes Pi-hole as DNS to every new client. After connecting, your phone's DNS queries appear in the Pi-hole query log at `http://<pi-ip>:8081/admin`. If you don't see queries, recreate the client config in wg-easy to pick up the DNS change.
 
+### 9. Set up Syncthing (optional — automatic file sync)
+
+Syncthing keeps your Keepass database (PC) and Aegis backups (phone) in sync with the Pi — no cloud.
+
+**On the Pi** — configure the sync folder:
+```
+ssh -L 8384:localhost:8384 pi@<pi-lan-ip>
+```
+Open http://localhost:8384, click **Default Folder**, set:
+- Label: `Syncthing`
+- Folder Path: `/var/syncthing/files/Syncthing`
+- Save
+
+Copy the **Device ID** from the dashboard.
+
+**On your PC** — download from [syncthing.net](https://syncthing.net/downloads/), run it, open http://localhost:8384, click **Add Remote Device** and paste the Pi's Device ID. Point a folder to `C:\Users\samuu\Syncthing\` and enable sharing with the Pi.
+
+**On Android** — install Syncthing-Fork from F-Droid, add the Pi's Device ID, share your Aegis export folder.
+
+Files sync automatically over LAN. They land in `~/pi02w-privacy-stack/files/Syncthing/` on the Pi — accessible via Filebrowser and included in weekly backups.
+
 ## Accessing the services
 
 | Service | URL | How to reach it |
@@ -113,10 +134,10 @@ With `INIT_DNS` set to your Pi's LAN IP, wg-easy pushes Pi-hole as DNS to every 
 | nginx landing page | http://&lt;pi-ip&gt; | Any browser on your LAN |
 | Pi-hole admin | http://&lt;pi-ip&gt;:8081/admin | Any browser on your LAN |
 | Filebrowser | http://&lt;pi-ip&gt;:8080 | Any browser on your LAN |
+| Syncthing UI | http://localhost:8384 | SSH tunnel only |
 | wg-easy UI | http://localhost:51821 | SSH tunnel only |
 
-
-The wg-easy admin UI is bound to localhost-only for security. Always use an SSH tunnel to access it.
+The wg-easy and Syncthing admin UIs are bound to localhost for security. Always use an SSH tunnel to access them.
 
 After installing the WireGuard app on your phone and importing the config, the VPN is also accessible from anywhere (mobile data, other Wi-Fi networks) as long as the Pi is online and your router forwards UDP 51820.
 
@@ -227,7 +248,7 @@ pi02w-privacy-stack/
 │   └── scripts/setup-maintenance.sh  # One-time: enable OS auto-updates
 │
 ├── USED AUTOMATICALLY BY DOCKER COMPOSE
-│   ├── docker-compose.yml          # Main config, defines all 6 services
+│   ├── docker-compose.yml          # Main config, defines all 7 services
 │   ├── .env.default                # Template to copy to .env and edit
 │   ├── .env                        # Your passwds
 │   ├── iptables-nft-wrapper.sh     # nftables → iptables shim for wg-easy
@@ -243,6 +264,7 @@ pi02w-privacy-stack/
     ├── README.md                   
     ├── files/              # Filebrowser file root (created by install.sh)
     ├── filebrowser/        # Filebrowser database (created by install.sh)
+    ├── syncthing/          # Syncthing config directory (created by install.sh)
     └── nginx/
         └── html/           # nginx page (created by install.sh)
 ```

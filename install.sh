@@ -19,38 +19,8 @@ if [ ! -f .env ]; then
     fi
 fi
 
-# Create nginx directories and default page
-if [ ! -d nginx/html ]; then
-    echo "Creating nginx directories..."
-    mkdir -p nginx/html
-fi
-if [ ! -f nginx/html/index.html ]; then
-    cat > nginx/html/index.html << 'EOF'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pi Zero 2W Server</title>
-    <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 0 20px; text-align: center; }
-        h1 { color: #333; }
-        p { color: #666; }
-    </style>
-</head>
-<body>
-    <h1>Pi Zero 2W Server</h1>
-    <p>NGINX is running. Place your site files in nginx/html.</p>
-</body>
-</html>
-EOF
-fi
-
 # Create filebrowser directories
 mkdir -p files filebrowser
-
-# Create syncthing directories
-mkdir -p syncthing/config
 
 # Update package list and system
 echo "Updating system..."
@@ -62,7 +32,9 @@ sudo apt-get install -y \
     ca-certificates \
     curl \
     gnupg \
-    lsb-release
+    lsb-release \
+    bluez \
+    bluez-tools
 
 # Add Docker's official GPG key
 echo "Adding Docker GPG key..."
@@ -92,6 +64,11 @@ sudo systemctl enable docker
 echo "Adding user to docker group..."
 sudo usermod -aG docker $USER
 
+# Enable Bluetooth service (required for MeshMonitor BLE bridge)
+echo "Enabling Bluetooth service..."
+sudo systemctl enable bluetooth
+sudo systemctl start bluetooth
+
 # Reduce swappiness to minimize SD card wear (zram handles swap)
 echo "Setting vm.swappiness=10..."
 echo "vm.swappiness=10" | sudo tee /etc/sysctl.d/99-swappiness.conf
@@ -99,10 +76,23 @@ sudo sysctl -w vm.swappiness=10 > /dev/null
 
 echo "Installation complete!"
 echo "Please log out and log back in for docker group changes to take effect"
-echo "Then run 'docker compose up -d' to start all services."
+echo ""
+echo "=== NEXT STEPS ==="
+echo "1. Edit .env and set BLE_ADDRESS to your Meshtastic device's MAC address."
+echo "   To find it, run:"
+echo "     docker run --rm --privileged -v /var/run/dbus:/var/run/dbus \\"
+echo "       ghcr.io/yeraze/meshtastic-ble-bridge:latest --scan"
+echo ""
+echo "2. If your device requires pairing, run:"
+echo "     bluetoothctl"
+echo "     scan on"
+echo "     pair AA:BB:CC:DD:EE:FF"
+echo "     trust AA:BB:CC:DD:EE:FF"
+echo "     exit"
+echo ""
+echo "3. Then start all services:"
+echo "     docker compose up -d"
+echo ""
 IP=$(hostname -I | awk '{print $1}')
-echo "Access Pi-hole admin at http://$IP:8081/admin"
 echo "Access FileBrowser at http://$IP:8080"
-echo "Access nginx landing page at http://$IP"
-echo "Syncthing web UI at http://localhost:8384 (SSH tunnel: ssh -L 8384:localhost:8384 pi@$IP)"
-echo "Pi-hole DNS is on port 53 (configure devices to use $IP as DNS server)"
+echo "Access MeshMonitor at http://$IP:8081"

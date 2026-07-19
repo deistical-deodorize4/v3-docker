@@ -1,51 +1,5 @@
 services:
 
-  unbound:
-    image: alpine:latest
-    container_name: unbound
-    restart: unless-stopped
-    mem_limit: 64m
-    cpus: 0.25
-    entrypoint: ["/bin/sh", "/entrypoint.sh"]
-    volumes:
-      - ./unbound/unbound.conf:/etc/unbound/unbound.conf:ro
-      - ./unbound-entrypoint.sh:/entrypoint.sh:ro
-      - unbound-data:/var/lib/unbound
-    ports:
-      - "127.0.0.1:5335:5335/udp"
-      - "127.0.0.1:5335:5335/tcp"
-    healthcheck:
-      test: ["CMD", "sh", "-c", "drill -p 5335 example.com @127.0.0.1 >/dev/null 2>&1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
-    networks:
-      - homelab
-
-  pihole:
-    image: pihole/pihole:latest
-    container_name: pihole
-    restart: unless-stopped
-    mem_limit: 150m
-    cpus: 0.25
-    depends_on:
-      - unbound
-    environment:
-      FTLCONF_webserver_api_password: "${PIHOLE_WEBPASSWORD}"
-      FTLCONF_dns_upstreams: "unbound#5335"
-      FTLCONF_dns_listeningMode: "all"
-      FTLCONF_dns_dnssec: "true"
-    volumes:
-      - pihole-data:/etc/pihole
-      - pihole-dnsmasq:/etc/dnsmasq.d
-    ports:
-      - "53:53/tcp"
-      - "53:53/udp"
-      - "8081:80/tcp"
-    networks:
-      - homelab
-
   filebrowser:
     image: filebrowser/filebrowser:latest
     container_name: filebrowser
@@ -71,8 +25,6 @@ services:
     restart: unless-stopped
     mem_limit: 128m
     cpus: 0.25
-    depends_on:
-      - pihole
     environment:
       INSECURE: "true"
       DISABLE_IPV6: "true"
@@ -96,60 +48,51 @@ services:
     networks:
       - homelab
 
-  nginx:
-    image: nginx:stable-alpine-slim
-    container_name: nginx-server
-    ports:
-      - "80:80"
+  meshmonitor-ble-bridge:
+    image: ghcr.io/yeraze/meshtastic-ble-bridge:latest
+    container_name: meshmonitor-ble-bridge
+    privileged: true
     restart: unless-stopped
+    mem_limit: 64m
+    cpus: 0.1
     volumes:
-      - ./nginx/html:/usr/share/nginx/html
-    mem_limit: 32m
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  watchtower:
-    image: containrrr/watchtower:latest
-    container_name: watchtower
-    restart: unless-stopped
-    mem_limit: 32m
-    cpus: 0.25
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/dbus:/var/run/dbus
+      - /var/lib/bluetooth:/var/lib/bluetooth:ro
     environment:
-      DOCKER_API_VERSION: "1.40"
-      WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_INCLUDE_STOPPED: "true"
-      WATCHTOWER_SCHEDULE: "0 7 1 * *"
-      TZ: "${TZ:-UTC}"
+      - BLE_ADDRESS=${BLE_ADDRESS:-}
+    command: ${BLE_ADDRESS:-}
+    networks:
+      - homelab
 
-  syncthing:
-    image: syncthing/syncthing:latest
-    container_name: syncthing
+  meshmonitor:
+    image: ghcr.io/yeraze/meshmonitor:latest
+    container_name: meshmonitor
     restart: unless-stopped
-    mem_limit: 32m
+    mem_limit: 128m
     cpus: 0.25
-    volumes:
-      - ./syncthing/config:/var/syncthing/config
-      - ./files:/var/syncthing/files
+    depends_on:
+      - meshmonitor-ble-bridge
     ports:
-      - "127.0.0.1:8384:8384/tcp"
-      - "22000:22000/tcp"
-      - "22000:22000/udp"
-      - "21027:21027/udp"
+      - "8081:3001"
+    volumes:
+      - meshmonitor-data:/data
+    env_file: .env
+    environment:
+      - NODE_ENV=development
+      - ALLOWED_ORIGINS=http://localhost:8081
+      - MESHTASTIC_NODE_IP=meshmonitor-ble-bridge
+      - MESHTASTIC_NODE_PORT=4403
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - homelab
 
 volumes:
-  unbound-data:
-  pihole-data:
-  pihole-dnsmasq:
+  meshmonitor-data:
+    driver: local
 
 networks:
   homelab:

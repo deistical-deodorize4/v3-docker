@@ -1,272 +1,344 @@
-# Pi Zero 2W Homelab
+# Pi Zero 2W Privacy Stack
 
-Pi-hole, Unbound, WireGuard (wg-easy), Filebrowser, Syncthing, nginx and Watchtower, all in Docker, on a Raspberry Pi Zero 2W with only 512MB RAM.
+A beginner-friendly Docker setup for your Raspberry Pi Zero 2W that gives you a file manager, a VPN, and a Meshtastic mesh network monitor — all from your browser.
 
-![visuals](https://github.com/deistical-deodorize4/pi02w-privacy-stack/blob/25e1d9ff3f154e40e5110506a0775441624df51c/visuals.jpg)
+## What You Get
 
-## Quick Start
+| Icon | Service | Port | What it does |
+|------|---------|------|-------------|
+| 📁 | **FileBrowser** | `8080` | Upload/download files through your browser |
+| 🔒 | **wg-easy** | `51821` | WireGuard VPN with a web interface |
+| 📡 | **MeshMonitor** | `8081` | Dashboard for your Meshtastic mesh network |
+| 🔵 | **BLE Bridge** | — | Connects MeshMonitor to your node via Bluetooth |
 
-### 1. Update the Pi
+---
 
-```
-sudo apt update && sudo apt upgrade -y
-````
-### 2. Enable cgroup memory in kernel's parametres
+## Step-by-Step Guide
 
-````
-nano /boot/firmware/cmdline.txt
-````
-add at the end: `cgroup_memory=1 cgroup_enable=memory`
+### Step 0: What You Need
 
-And reboot
-````
-sudo reboot
-````
+- [ ] Raspberry Pi Zero 2W
+- [ ] MicroSD card (16 GB or more)
+- [ ] Micro USB power cable
+- [ ] Your Pi connected to WiFi with SSH enabled
+- [ ] A Meshtastic device with Bluetooth (Heltec, LilyGo, RAK, etc.)
+- [ ] A computer to SSH into the Pi
 
-### 3. Clone the repository
+---
 
-```
-sudo apt install git -y
-git clone https://github.com/deistical-deodorize4/pi02w-privacy-stack
+### Step 1: Download this project onto your Pi
+
+SSH into your Pi and run:
+
+```bash
+git clone <put-the-repo-url-here>
 cd pi02w-privacy-stack
 ```
 
-### 4. Run the install script
+---
 
-Run: `bash install.sh`
+### Step 2: Run the installer
 
-This is the only script you run directly during initial setup. It does the following, in order:
-
-1. **Creates required directories** :  `files/`, `filebrowser/`, `syncthing/`, `nginx/html/` for bind mounts used by the containers
-2. **Installs Docker** : adds the official Docker repository and installs `docker-ce`, `docker-compose-plugin`, and related packages
-3. **Adds your user to the `docker` group** : so you can run Docker without `sudo` (log out and back in after)
-4. **Reduces swappiness** : sets `vm.swappiness=10` to minimise SD card wear
-
-After the script finishes, **log out and back in** for the Docker group change to take effect.
-
-### 4. Configure passwords and settings
-
+```bash
+chmod +x install.sh
+./install.sh
 ```
-cp .env.default .env
+
+The script will:
+- Update your system packages
+- Install Docker (needed to run the services)
+- Install Bluetooth support (needed for the Meshtastic connection)
+- Enable the Bluetooth service
+- Copy `.env.default` to `.env` (your settings file)
+
+⚠️ **After the installer finishes, log out and log back in** (or reboot):
+
+```bash
+exit
+# SSH back in
+```
+
+This is required so your user can run Docker commands.
+
+---
+
+### Step 3: Edit your settings
+
+Open the settings file:
+
+```bash
 nano .env
 ```
 
+You'll see this:
 
-If you don't have a static public IP, use a DDNS service like DuckDNS or No-IP and set `WG_HOST` to your DDNS hostname.
-
-### 5. Start the stack
-
-Run: `docker compose up -d`
-
-This creates and starts all containers (unbound, pihole, filebrowser, syncthing, wg-easy, nginx, watchtower). 
-
-The `docker-compose.yml` file is the main configuration that ties everything together. When you run `docker compose up -d`, Docker Compose automatically reads these supporting files
-
-| File | Role | How it's used |
-|------|------|---------------|
-| `unbound-entrypoint.sh` | Unbound first-run installer | Mounted into the `unbound` container. Runs inside the container |
-| `unbound/unbound.conf` | DNS resolver config | Mounted into the `unbound` container. Defines Quad9 DoT upstream |
-| `iptables-nft-wrapper.sh` | nftables fallback | Mounted into the `wg-easy` container at `/usr/sbin/iptables`. Replaces missing `ip_tables` kernel module|
-
-After 2-3 mins, check status:
-
-```
-docker compose ps
-or
-docker ps --format "{{.Names}} {{.Status}}"
+```ini
+TZ=Europe/Madrid
+WG_HOST=vpn.example.com
+INIT_DNS=your_pi's_static_ip
+WG_UI_PORT=51821
+BLE_ADDRESS=
 ```
 
-Wait until `docker ps` shows all services as `(healthy)`.
+**Change these values:**
 
->!! Important: check `docker logs filebrowser` to find you auto-generated password. Default credentials are no longer admin/admin.
+| Setting | What to put |
+|---------|------------|
+| `TZ` | Your timezone. Examples: `America/New_York`, `Europe/London`, `Asia/Tokyo`. [Full list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) |
+| `WG_HOST` | Your Pi's public IP or Dynamic DNS hostname (only needed if you use the VPN from outside your home) |
+| `INIT_DNS` | Your Pi's local IP address, e.g. `192.168.1.100` |
 
-### 6. Forward port on your router
+Leave `BLE_ADDRESS` empty for now — we'll fill it in the next step.
 
-Log into your router and create a port forwarding rule:
+**Save and exit:** `Ctrl+X`, then `Y`, then `Enter`.
 
-| Setting | Value |
-|---------|-------|
-| Protocol | UDP |
-| External port | 51820 |
-| Internal IP | Your Pi's LAN IP |
-| Internal port | 51820 |
+---
 
-This is required for WireGuard clients to connect from outside your home network. No other ports need to be open.
+### Step 4: Find your Meshtastic device's Bluetooth address
 
-### 7. Set up WireGuard on your phone or laptop
+Your Meshtastic device talks over Bluetooth, so MeshMonitor needs its MAC address.
 
-First, create an SSH tunnel to access the wg-easy admin UI:
+**4a.** Make sure your Meshtastic device is **powered on** and Bluetooth is **enabled**.
 
-```
-# On your computer (not the Pi):
-ssh -L 51821:localhost:51821 pi@<pi-lan-ip>
-```
+**4b.** On your Pi, run this scan command:
 
-Open http://localhost:51821 in your browser.
-
-### 8. Verify phone DNS goes through Pi-hole
-
-With `INIT_DNS` set to your Pi's LAN IP, wg-easy pushes Pi-hole as DNS to every new client. After connecting, your phone's DNS queries appear in the Pi-hole query log at `http://<pi-ip>:8081/admin`. If you don't see queries, recreate the client config in wg-easy to pick up the DNS change.
-
-### 9. Set up Syncthing (optional: automatic file sync)
-
-Syncthing keeps your local passwd database (PC) and 2FA backups (phone) in sync with the Pi.
-
-On the Pi, configure the sync folder:
-```
-ssh -L 8384:localhost:8384 pi@<pi-lan-ip>
-```
-Open http://localhost:8384, click **Default Folder**, set:
-- Label: `Syncthing`
-- Folder Path: `/var/syncthing/files/Syncthing`
-- Save
-
-Copy the Device ID from the dashboard.
-
-**On your PC**: download from [syncthing.net](https://syncthing.net/downloads/), run it, open http://localhost:8384, click **Add Remote Device** and paste the Pi's Device ID. Point a folder to `C:\Users\samuu\Syncthing\` and enable sharing with the Pi.
-
-**On Android**: install Syncthing-Fork from F-Droid, add the Pi's Device ID, share your 2FA export folder.
-
-Files sync automatically over LAN. They land in `~/pi02w-privacy-stack/files/Syncthing/` on the Pi and are indeed accessible via Filebrowser and included in weekly backups.
-
-## Accessing the services
-
-| Service | URL | How to reach it |
-|---------|-----|-----------------|
-| nginx landing page | http://&lt;pi-ip&gt; | Any browser on your LAN |
-| Pi-hole admin | http://&lt;pi-ip&gt;:8081/admin | Any browser on your LAN |
-| Filebrowser | http://&lt;pi-ip&gt;:8080 | Any browser on your LAN |
-| Syncthing UI | http://localhost:8384 | SSH tunnel only |
-| wg-easy UI | http://localhost:51821 | SSH tunnel only |
-
-The wg-easy and Syncthing admin UIs are bound to localhost for security. Always use an SSH tunnel to access them.
-
-After installing the WireGuard app on your phone and importing the config, the VPN is also accessible from anywhere (mobile data, other Wi-Fi networks) as long as the Pi is online and your router forwards UDP 51820.
-
-## Maintenance
-
-The Pi maintains itself automatically on a weekly schedule plus monthly container updates to reduce SD card wear.
-
-### Already active (no action needed)
-
-| Task | When | What it does | Triggered by |
-|------|------|-------------|--------------|
-| **Container updates** | 1st of month, 7:00 AM | Watchtower refreshes all Docker images (monthly to limit SD wear) | `watchtower` container (defined in `docker-compose.yml`) |
-| **Config backup** | Fri 1:00 AM | Tars `~/pi02w-privacy-stack/` to `~/backups/` (keeps last 4) | `scripts/backup.sh` — scheduled by cron (set up in `install.sh`) |
-
-### One-time setup (run this after the stack is up)
-
-Run this once: `bash ~/pi02w-privacy-stack/scripts/setup-maintenance.sh`
-
-This enables automatic OS security updates via `unattended-upgrades` (Friday 2:00 AM).
-
-## Troubleshooting
-
-### Container won't start
-
-```
-# Check logs
-docker logs <container-name> --tail 20
-
-# Recreate with fresh config
-docker compose up -d --force-recreate <service-name>
+```bash
+docker run --rm --privileged \
+  -v /var/run/dbus:/var/run/dbus \
+  ghcr.io/yeraze/meshtastic-ble-bridge:latest --scan
 ```
 
-### DNS not working through Pi-hole
+**4c.** Wait a few seconds. You'll see something like:
 
 ```
-# Check individual services
-dig example.com @127.0.0.1 -p 5335 +short    # Unbound directly
-dig example.com @127.0.0.1 -p 53 +short       # Via Pi-hole
+Found Meshtastic device: Meshtastic_1a2b (AA:BB:CC:DD:EE:FF)
 ```
 
-If Unbound answers but Pi-hole doesn't, restart Pi-hole:
+**4d.** Copy the MAC address (the `AA:BB:CC:DD:EE:FF` part) and edit `.env` again:
 
-```
-docker compose restart pihole
-```
-
-### Docker containers crash (OOM)
-
-```
-# Check for OOM kills
-journalctl -k | grep -i oom
-
-# Check memory usage
-free -h
-
-# Check per-container memory
-docker stats --no-stream
+```bash
+nano .env
 ```
 
-If OOM kills happen, increase memory limits in `docker-compose.yml` and recreate:
+Find the line `BLE_ADDRESS=` and change it to:
 
+```ini
+BLE_ADDRESS=AA:BB:CC:DD:EE:FF
 ```
-docker compose down
+
+Save and exit: `Ctrl+X`, `Y`, `Enter`.
+
+> **Scan didn't find your device?** See the "Pairing" section below, then come back here.
+
+---
+
+### Step 5: Start the services
+
+```bash
 docker compose up -d
 ```
 
-### WireGuard clients connect but have no internet
+This will download the Docker images and start all services. It may take a few minutes the first time.
 
-Check that `INIT_DNS` in `.env` is set correctly:
+To check everything is running:
 
-```
-grep INIT_DNS .env
-```
-
-If it's wrong, fix it then restart wg-easy:
-
-```
-docker compose restart wg-easy
+```bash
+docker compose ps
 ```
 
-Then regenerate the client config on your phone (delete and recreate the tunnel).
-
-### Reset everything and start over
+You should see all services with `Up` in the status column:
 
 ```
-cd ~/pi02w-privacy-stack
-docker compose down -v
-docker system prune -af
-rm -rf wg-easy
+NAME                    STATUS              PORTS
+filebrowser             Up                  ...
+meshmonitor             Up                  ...
+meshmonitor-ble-bridge  Up                  ...
+wg-easy                 Up                  ...
 ```
 
-Then start again from step 3 (configure `.env` and `docker compose up -d`).
+---
 
-## Security notes
+### Step 6: Open the dashboards
 
-- wg-easy admin UI is bound to 127.0.0.1, always use an SSH tunnel to access it `(ssh -L 51821:localhost:51821 pi@<pi-lan-ip>)`
-- Unbound uses Quad9 DoT (Swiss non-profit, audited privacy policy)
-- Only UDP port 51820 needs to be open on your router
-- WireGuard tunnel encrypts all traffic between your phone and Pi
+Find your Pi's IP address:
 
-## Project structure
+```bash
+hostname -I
+```
+
+Then open these in your browser:
+
+| Service | URL |
+|---------|-----|
+| 📁 FileBrowser | `http://<YOUR_PI_IP>:8080` |
+| 🔒 WireGuard (wg-easy) | `http://<YOUR_PI_IP>:51821` |
+| 📡 MeshMonitor | `http://<YOUR_PI_IP>:8081` |
+
+**MeshMonitor login:**
+
+- Username: `admin`
+- Password: `changeme`
+
+Change this password right after logging in (click your username → Change Password).
+
+---
+
+## Pairing Your Meshtastic Device (if needed)
+
+Some devices need to be paired with your Pi before the BLE bridge can use them.
+
+**1.** Start the Bluetooth pairing tool:
+
+```bash
+bluetoothctl
+```
+
+**2.** Turn on scanning:
+
+```
+scan on
+```
+
+**3.** Wait for your device to appear. You'll see something like:
+
+```
+[NEW] Device AA:BB:CC:DD:EE:FF Meshtastic_1a2b
+```
+
+**4.** Pair with it:
+
+```
+pair AA:BB:CC:DD:EE:FF
+```
+
+**5.** Trust it (so it connects automatically in the future):
+
+```
+trust AA:BB:CC:DD:EE:FF
+```
+
+**6.** Exit:
+
+```
+exit
+```
+
+**7.** Now redo Step 4 (scan with the Docker command) and set `BLE_ADDRESS` in `.env`.
+
+**8.** Restart the services:
+
+```bash
+docker compose up -d
+```
+
+---
+
+## Useful Commands
+
+### Check if services are running
+
+```bash
+docker compose ps
+```
+
+### See what's happening (logs)
+
+```bash
+# All services at once
+docker compose logs
+
+# Just one service
+docker compose logs meshmonitor
+docker compose logs meshmonitor-ble-bridge
+```
+
+### Stop everything
+
+```bash
+docker compose down
+```
+
+### Start everything again
+
+```bash
+docker compose up -d
+```
+
+### Update to the latest version
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+---
+
+## If Something Goes Wrong
+
+### MeshMonitor shows a blank white page
+
+Edit `docker-compose.yml`:
+
+```bash
+nano docker-compose.yml
+```
+
+Find the line `ALLOWED_ORIGINS=http://localhost:8081` and add your Pi's IP:
+
+```
+- ALLOWED_ORIGINS=http://localhost:8081,http://192.168.1.100:8081
+```
+
+Replace `192.168.1.100` with your Pi's actual IP. Then restart:
+
+```bash
+docker compose up -d
+```
+
+### BLE Bridge won't connect
+
+1. Is your Meshtastic device **on** and in **Bluetooth range**? (10-30 meters)
+2. Did you pair it? (see the Pairing section above)
+3. Check the logs: `docker compose logs meshmonitor-ble-bridge`
+
+### A container won't start
+
+```bash
+docker compose logs <service-name>
+```
+
+Example: `docker compose logs wg-easy` — the error message will tell you what's wrong.
+
+---
+
+## About This Project
+
+This stack is designed to run comfortably on a Pi Zero 2W (512 MB RAM). Every service has resource limits:
+
+| Service | Max RAM | Max CPU |
+|---------|---------|---------|
+| FileBrowser | 32 MB | 25% |
+| wg-easy | 128 MB | 25% |
+| BLE Bridge | 64 MB | 10% |
+| MeshMonitor | 128 MB | 25% |
+
+### Files in this project
 
 ```
 pi02w-privacy-stack/
-│
-├── YOU RUN THESE
-│   ├── install.sh                    # Initial setup
-│   └── scripts/setup-maintenance.sh  # One-time: enable OS auto-updates
-│
-├── USED AUTOMATICALLY BY DOCKER COMPOSE
-│   ├── docker-compose.yml          # Main config, defines all 7 services
-│   ├── .env.default                # Template to copy to .env and edit
-│   ├── .env                        # Your passwds
-│   ├── iptables-nft-wrapper.sh     # nftables → iptables shim for wg-easy
-│   ├── unbound-entrypoint.sh       # Installs Unbound on container first start
-│   └── unbound/
-│       └── unbound.conf            # Unbound DNS config
-│
-├── RUN ON SCHEDULE (no action needed)
-│   └── scripts/backup.sh           # Friday 1AM cron: tars configs to ~/backups/
-│
-└── OTHER FILES
-    ├── LICENSE
-    ├── README.md                   
-    ├── files/              # Filebrowser file root (created by install.sh)
-    ├── filebrowser/        # Filebrowser database (created by install.sh)
-    ├── syncthing/          # Syncthing directory (created by install.sh)
-    └── nginx/
-        └── html/           # nginx page (created by install.sh)
+├── .env                 ← Your settings (don't share/commit this!)
+├── .env.default         ← Template you copy to .env
+├── docker-compose.yml   ← Defines all the services
+├── install.sh           ← Sets up Docker and Bluetooth
+├── iptables-nft-wrapper.sh  ← Fix for newer Pi OS versions
+├── LICENSE
+└── scripts/
+    ├── backup.sh
+    └── setup-maintenance.sh
 ```
+
+---
+
+## License
+
+MIT

@@ -74,8 +74,10 @@ You'll see this:
 
 ```ini
 TZ=Europe/Madrid
-WG_HOST=vpn.example.com
+INIT_HOST=vpn.example.com
 INIT_DNS=your_pi's_static_ip
+WG_ADMIN_USERNAME=admin
+WG_ADMIN_PASSWORD=CHANGE_ME
 WG_UI_PORT=51821
 BLE_ADDRESS=
 ```
@@ -85,8 +87,10 @@ BLE_ADDRESS=
 | Setting | What to put |
 |---------|------------|
 | `TZ` | Your timezone. Examples: `America/New_York`, `Europe/London`, `Asia/Tokyo`. [Full list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) |
-| `WG_HOST` | Your Pi's public IP or Dynamic DNS hostname (only needed if you use the VPN from outside your home) |
+| `INIT_HOST` | Your Pi's public IP or Dynamic DNS hostname (only needed if you use the VPN from outside your home) |
 | `INIT_DNS` | Your Pi's local IP address, e.g. `192.168.1.100` |
+| `WG_ADMIN_USERNAME` | wg-easy admin username |
+| `WG_ADMIN_PASSWORD` | wg-easy admin password. Leave empty to create it manually via the setup wizard on first start. Remove it from `.env` after first successful start |
 
 Leave `BLE_ADDRESS` empty for now — we'll fill it in the next step.
 
@@ -171,8 +175,17 @@ Then open these in your browser:
 | Service | URL |
 |---------|-----|
 | 📁 FileBrowser | `http://<YOUR_PI_IP>:8080` |
-| 🔒 WireGuard (wg-easy) | `http://<YOUR_PI_IP>:51821` |
+| 🔒 WireGuard (wg-easy) | `http://127.0.0.1:51821` (see note below) |
 | 📡 MeshMonitor | `http://<YOUR_PI_IP>:8081` |
+
+**WireGuard (wg-easy) note:** the admin UI is bound to `127.0.0.1` only, so from another machine use an SSH tunnel:
+
+```bash
+ssh -L 51821:127.0.0.1:51821 <pi-user>@<YOUR_PI_IP>
+# then open http://localhost:51821
+```
+
+Log in with the admin username/password set in `.env` (`WG_ADMIN_USERNAME` / `WG_ADMIN_PASSWORD`), or with the account you create in the setup wizard on first start.
 
 **MeshMonitor login:**
 

@@ -29,6 +29,8 @@ services:
       INSECURE: "true"
       DISABLE_IPV6: "true"
       INIT_ENABLED: "true"
+      INIT_USERNAME: "${WG_ADMIN_USERNAME:-admin}"
+      INIT_PASSWORD: "${WG_ADMIN_PASSWORD:-}"
     env_file: .env
     volumes:
       - ./wg-easy:/etc/wireguard

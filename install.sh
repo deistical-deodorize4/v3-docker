@@ -39,7 +39,36 @@ sudo apt-get install -y \
 # Add Docker's official GPG key
 echo "Adding Docker GPG key..."
 sudo mkdir -m 0755 -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+# Docker's official signing key fingerprint (published at
+# https://download.docker.com/linux/debian/gpg)
+DOCKER_GPG_FINGERPRINT="9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
+
+# Download the key to a temp location and verify its fingerprint before
+# installing it, so a compromised/mistyped URL can't poison apt.
+TMP_DIR="$(mktemp -d)"
+if ! curl -fsSL https://download.docker.com/linux/debian/gpg | \
+        gpg --dearmor -o "${TMP_DIR}/docker.gpg"; then
+    echo "ERROR: Failed to download Docker GPG key."
+    rm -rf "${TMP_DIR}"
+    exit 1
+fi
+
+ACTUAL_FPR="$(gpg --batch --with-colons --show-keys "${TMP_DIR}/docker.gpg" | awk -F: '$1=="fpr" {print $10; exit}')"
+EXPECTED_FPR="$(echo "${DOCKER_GPG_FINGERPRINT}" | tr -d ' ')"
+
+if [ "${ACTUAL_FPR}" != "${EXPECTED_FPR}" ]; then
+    echo "ERROR: Docker GPG key fingerprint verification failed!"
+    echo "  Expected: ${EXPECTED_FPR}"
+    echo "  Got:      ${ACTUAL_FPR:-<none>}"
+    echo "Refusing to install the Docker repository key."
+    rm -rf "${TMP_DIR}"
+    exit 1
+fi
+
+echo "Docker GPG key fingerprint verified: ${DOCKER_GPG_FINGERPRINT}"
+sudo install -m 0644 "${TMP_DIR}/docker.gpg" /etc/apt/keyrings/docker.gpg
+rm -rf "${TMP_DIR}"
 
 # Set up Docker repository
 echo "Setting up Docker repository..."

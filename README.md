@@ -48,6 +48,7 @@ chmod +x install.sh
 The script will:
 - Update your system packages
 - Install Docker (needed to run the services)
+- Verify Docker's GPG key fingerprint (so a swapped key can't poison apt)
 - Install Bluetooth support (needed for the Meshtastic connection)
 - Enable the Bluetooth service
 - Copy `.env.default` to `.env` (your settings file)

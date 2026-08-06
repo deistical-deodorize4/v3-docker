@@ -108,7 +108,7 @@ services:
     cpus: 0.1
     environment:
       TZ: "${TZ:-UTC}"
-      WATCHTOWER_SCHEDULE: "0 7 1 * * *"
+      WATCHTOWER_SCHEDULE: "0 0 7 1 * *"
       WATCHTOWER_LABEL_ENABLE: "true"
       WATCHTOWER_CLEANUP: "true"
       WATCHTOWER_SELF_UPDATE: "true"

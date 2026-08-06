@@ -10,6 +10,7 @@ A beginner-friendly Docker setup for your Raspberry Pi Zero 2W that gives you a 
 | 🔒 | **wg-easy** | `51821` | WireGuard VPN with a web interface |
 | 📡 | **MeshMonitor** | `8081` | Dashboard for your Meshtastic mesh network |
 | 🔵 | **BLE Bridge** | — | Connects MeshMonitor to your node via Bluetooth |
+| 🔄 | **Watchtower** | — | Automatically updates all containers (1st of every month) |
 
 ---
 
@@ -94,6 +95,9 @@ BLE_ADDRESS=
 
 Leave `BLE_ADDRESS` empty for now — we'll fill it in the next step.
 
+> **Router port forwarding (only if you use the VPN from outside your home):**
+> On your router, forward **UDP port `51820`** to your Pi's IP. Without this, VPN clients can only connect while on your home network.
+
 **Save and exit:** `Ctrl+X`, then `Y`, then `Enter`.
 
 ---
@@ -134,6 +138,8 @@ Save and exit: `Ctrl+X`, `Y`, `Enter`.
 
 > **Scan didn't find your device?** See the "Pairing" section below, then come back here.
 
+> **BLE bridge behavior:** the `meshmonitor-ble-bridge` container needs `BLE_ADDRESS` to know which device to connect to. Until you set it, the container exits immediately (it has nothing to do) and keeps restarting — this is expected. MeshMonitor will show no node data until `BLE_ADDRESS` is set and the device is within Bluetooth range. After editing `.env`, recreate the containers with `docker compose up -d --force-recreate meshmonitor-ble-bridge`.
+
 ---
 
 ### Step 5: Start the services
@@ -157,6 +163,7 @@ NAME                    STATUS              PORTS
 filebrowser             Up                  ...
 meshmonitor             Up                  ...
 meshmonitor-ble-bridge  Up                  ...
+watchtower              Up                  ...
 wg-easy                 Up                  ...
 ```
 
@@ -186,6 +193,12 @@ ssh -L 51821:127.0.0.1:51821 <pi-user>@<YOUR_PI_IP>
 ```
 
 Log in with the admin username/password set in `.env` (`WG_ADMIN_USERNAME` / `WG_ADMIN_PASSWORD`), or with the account you create in the setup wizard on first start.
+
+After the admin account is created, remove the `WG_ADMIN_PASSWORD` (and `INIT_*`) lines from `.env` so the password isn't sitting in plaintext on disk.
+
+For VPN clients to connect from outside your home, make sure **UDP 51820** is forwarded on your router to the Pi's IP (see Step 3).
+
+**FileBrowser:** first login uses `admin` / `admin` — change it right after (Settings → Profile).
 
 **MeshMonitor login:**
 
@@ -279,6 +292,8 @@ docker compose up -d
 
 ### Update to the latest version
 
+Containers are **pinned to specific versions** in `docker-compose.yml` and **Watchtower** automatically updates them on the 1st of every month at 7:00 AM. To update manually:
+
 ```bash
 docker compose pull
 docker compose up -d
@@ -334,6 +349,7 @@ This stack is designed to run comfortably on a Pi Zero 2W (512 MB RAM). Every se
 | wg-easy | 128 MB | 25% |
 | BLE Bridge | 64 MB | 10% |
 | MeshMonitor | 128 MB | 25% |
+| Watchtower | 64 MB | 10% |
 
 ### Files in this project
 

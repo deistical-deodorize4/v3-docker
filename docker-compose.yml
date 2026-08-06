@@ -1,11 +1,13 @@
 services:
 
   filebrowser:
-    image: filebrowser/filebrowser:latest
+    image: filebrowser/filebrowser:v2.63.23
     container_name: filebrowser
     restart: unless-stopped
     mem_limit: 32m
     cpus: 0.25
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     ports:
       - "8080:80"
     volumes:
@@ -47,16 +49,20 @@ services:
     sysctls:
       net.ipv4.ip_forward: 1
       net.ipv4.conf.all.src_valid_mark: 1
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     networks:
       - homelab
 
   meshmonitor-ble-bridge:
-    image: ghcr.io/yeraze/meshtastic-ble-bridge:latest
+    image: ghcr.io/yeraze/meshtastic-ble-bridge:2.0.0
     container_name: meshmonitor-ble-bridge
     privileged: true
     restart: unless-stopped
     mem_limit: 64m
     cpus: 0.1
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     volumes:
       - /var/run/dbus:/var/run/dbus
       - /var/lib/bluetooth:/var/lib/bluetooth:ro
@@ -67,13 +73,15 @@ services:
       - homelab
 
   meshmonitor:
-    image: ghcr.io/yeraze/meshmonitor:latest
+    image: ghcr.io/yeraze/meshmonitor:2.8.2
     container_name: meshmonitor
     restart: unless-stopped
     mem_limit: 128m
     cpus: 0.25
     depends_on:
       - meshmonitor-ble-bridge
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     ports:
       - "8081:3001"
     volumes:
@@ -89,6 +97,25 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - homelab
+
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    container_name: watchtower
+    restart: unless-stopped
+    mem_limit: 64m
+    cpus: 0.1
+    environment:
+      TZ: "${TZ:-UTC}"
+      WATCHTOWER_SCHEDULE: "0 7 1 * * *"
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_SELF_UPDATE: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     networks:
       - homelab
 

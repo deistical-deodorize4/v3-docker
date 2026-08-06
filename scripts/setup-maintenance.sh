@@ -8,6 +8,11 @@
 
 set -euo pipefail
 
+# Derive project dir from this script's location: <project>/scripts/setup-maintenance.sh
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+BACKUP_SCRIPT="${PROJECT_DIR}/scripts/backup.sh"
+BACKUP_LOG="${HOME}/backups/backup.log"
+
 echo "=== 1/3 Installing unattended-upgrades ==="
 sudo apt update -qq
 sudo apt install -y unattended-upgrades
@@ -67,15 +72,15 @@ sudo systemctl daemon-reload
 sudo systemctl restart apt-daily.timer apt-daily-upgrade.timer
 
 echo "=== 2/3 Setting up backup cron (every Friday 1:00 AM) ==="
-chmod +x ~/pi02w-privacy-stack/scripts/backup.sh
+chmod +x "${BACKUP_SCRIPT}"
 (
   crontab -l 2>/dev/null | grep -v backup.sh || true
   echo "# Weekly homelab backup (Friday 1:00 AM)"
-  echo "0 1 * * 5 /home/pi/pi02w-privacy-stack/scripts/backup.sh >> /home/pi/backups/backup.log 2>&1"
+  echo "0 1 * * 5 ${BACKUP_SCRIPT} >> ${BACKUP_LOG} 2>&1"
 ) | crontab -
 
 echo "=== 3/3 Applying Docker stack changes (Watchtower) ==="
-cd ~/pi02w-privacy-stack
+cd "${PROJECT_DIR}"
 docker compose up -d --force-recreate watchtower
 
 echo ""
@@ -83,6 +88,3 @@ echo "Done! Schedule:"
 echo "  Fri 1:00 → Backup (cron)"
 echo "  Fri 2:00 → OS upgrades (apt)"
 echo "  1st of month 7:00 → Container updates (Watchtower)"
-echo ""
-echo "Note: Pi-hole DNS is only used by devices that manually point to it"
-echo "      (e.g., your WireGuard phone). Router DHCP stays unchanged."

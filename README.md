@@ -305,16 +305,16 @@ docker compose up -d
 
 ### MeshMonitor shows a blank white page
 
-MeshMonitor works out of the box (it accepts connections from any origin). If you've tightened `ALLOWED_ORIGINS` in `docker-compose.yml` and get a blank page, add your Pi's IP back:
+Edit `docker-compose.yml`:
+
+```bash
+nano docker-compose.yml
+```
+
+Find the line `ALLOWED_ORIGINS=http://localhost:8081` and add your Pi's IP:
 
 ```
-- ALLOWED_ORIGINS=*
-```
-
-or restrict it to your Pi's IP:
-
-```
-- ALLOWED_ORIGINS=http://192.168.1.100:8081
+- ALLOWED_ORIGINS=http://localhost:8081,http://192.168.1.100:8081
 ```
 
 Replace `192.168.1.100` with your Pi's actual IP. Then restart:

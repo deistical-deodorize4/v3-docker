@@ -1,38 +1,19 @@
-# Pi Zero 2W Privacy Stack
-
-A beginner-friendly Docker setup for your Raspberry Pi Zero 2W that gives you a file manager, a VPN, and a Meshtastic mesh network monitor — all from your browser.
-
 ## What You Get
 
-| Icon | Service | Port | What it does |
-|------|---------|------|-------------|
-| 📁 | **FileBrowser** | `8080` | Upload/download files through your browser |
-| 🔒 | **wg-easy** | `51821` | WireGuard VPN with a web interface |
-| 📡 | **MeshMonitor** | `8081` | Dashboard for your Meshtastic mesh network |
-| 🔵 | **BLE Bridge** | — | Connects MeshMonitor to your node via Bluetooth |
-| 🔄 | **Watchtower** | — | Automatically updates all containers (1st of every month) |
+| Service | Port | 
+|---------|------|
+|FileBrowser | `8080` | 
+|Wg-easy | `51821` | 
+|MeshMonitor | `8081` | 
+|BLE Bridge | — | 
+|Watchtower | — |
 
----
 
 ## Step-by-Step Guide
-
-### Step 0: What You Need
-
-- [ ] Raspberry Pi Zero 2W
-- [ ] MicroSD card (16 GB or more)
-- [ ] Micro USB power cable
-- [ ] Your Pi connected to WiFi with SSH enabled
-- [ ] A Meshtastic device with Bluetooth (Heltec, LilyGo, RAK, etc.)
-- [ ] A computer to SSH into the Pi
-
----
-
-### Step 1: Download this project onto your Pi
-
-SSH into your Pi and run:
+### Step 1: Clone
 
 ```bash
-git clone <put-the-repo-url-here>
+git clone
 cd v3-docker
 ```
 
@@ -47,13 +28,13 @@ chmod +x install.sh
 
 The script will:
 - Update your system packages
-- Install Docker (needed to run the services)
-- Verify Docker's GPG key fingerprint (so a swapped key can't poison apt)
-- Install Bluetooth support (needed for the Meshtastic connection)
+- Install Docker 
+- Verify Docker's GPG key fingerprint 
+- Install Bluetooth support 
 - Enable the Bluetooth service
-- Copy `.env.default` to `.env` (your settings file)
+- Copy `.env.default` to `.env`
 
-⚠️ **After the installer finishes, log out and log back in** (or reboot):
+⚠️ After the installer finishes, log out and log back in (or reboot):
 
 ```bash
 exit
@@ -66,41 +47,26 @@ This is required so your user can run Docker commands.
 
 ### Step 3: Edit your settings
 
-Open the settings file:
+
 
 ```bash
 nano .env
 ```
 
-You'll see this:
-
-```ini
-TZ=Europe/Madrid
-INIT_HOST=vpn.example.com
-INIT_DNS=your_pi's_static_ip
-WG_ADMIN_USERNAME=admin
-WG_ADMIN_PASSWORD=CHANGE_ME
-WG_UI_PORT=51821
-BLE_ADDRESS=
-HUB_DATA_DIR=/home/pi/pi02w-hub/data
-```
-
 **Change these values:**
 
-| Setting | What to put |
+| Setting | What it is |
 |---------|------------|
-| `TZ` | Your timezone. Examples: `America/New_York`, `Europe/London`, `Asia/Tokyo`. [Full list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) |
-| `INIT_HOST` | Your Pi's public IP or Dynamic DNS hostname (only needed if you use the VPN from outside your home) |
-| `INIT_DNS` | Your Pi's local IP address, e.g. `192.168.1.100` |
+| `TZ` | Your timezone. E.g: `America/New_York`, `Europe/London`, `Asia/Tokyo`. [(Full list)](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) |
+| `INIT_HOST` | Your Pi's public IP or Dynamic DNS hostname|
+| `INIT_DNS` | Your Pi's local IP address|
 | `WG_ADMIN_USERNAME` | wg-easy admin username |
 | `WG_ADMIN_PASSWORD` | wg-easy admin password. Leave empty to create it manually via the setup wizard on first start. Remove it from `.env` after first successful start |
 
-Leave `BLE_ADDRESS` empty for now — we'll fill it in the next step.
+Leave `BLE_ADDRESS` empty for now
 
 > **Router port forwarding (only if you use the VPN from outside your home):**
 > On your router, forward **UDP port `51820`** to your Pi's IP. Without this, VPN clients can only connect while on your home network.
-
-**Save and exit:** `Ctrl+X`, then `Y`, then `Enter`.
 
 ---
 
@@ -183,9 +149,9 @@ Then open these in your browser:
 
 | Service | URL |
 |---------|-----|
-| 📁 FileBrowser | `http://<YOUR_PI_IP>:8080` |
-| 🔒 WireGuard (wg-easy) | `http://127.0.0.1:51821` (see note below) |
-| 📡 MeshMonitor | `http://<YOUR_PI_IP>:8081` |
+| FileBrowser | `http://<YOUR_PI_IP>:8080` |
+| WireGuard (wg-easy) | `http://127.0.0.1:51821` (see note below) |
+| MeshMonitor | `http://<YOUR_PI_IP>:8081` |
 
 **WireGuard (wg-easy) note:** the admin UI is bound to `127.0.0.1` only, so from another machine use an SSH tunnel:
 
@@ -296,7 +262,7 @@ docker compose up -d
 docker compose ps
 ```
 
-### See what's happening (logs)
+### Logs
 
 ```bash
 # All services at once
@@ -368,27 +334,16 @@ Example: `docker compose logs wg-easy` — the error message will tell you what'
 
 ---
 
-## About This Project
-
-This stack is designed to run comfortably on a Pi Zero 2W (512 MB RAM). Every service has resource limits:
-
-| Service | Max RAM | Max CPU |
-|---------|---------|---------|
-| FileBrowser | 32 MB | 25% |
-| wg-easy | 128 MB | 25% |
-| BLE Bridge | 64 MB | 10% |
-| MeshMonitor | 128 MB | 25% |
-| Watchtower | 64 MB | 10% |
 
 ### Files in this project
 
 ```
 v3-docker/
-├── .env                 ← Your settings (don't share/commit this!)
-├── .env.default         ← Template you copy to .env
-├── docker-compose.yml   ← Defines all the services
-├── install.sh           ← Sets up Docker and Bluetooth
-├── iptables-nft-wrapper.sh  ← Fix for newer Pi OS versions
+├── .env                 
+├── .env.default         
+├── docker-compose.yml   
+├── install.sh           
+├── iptables-nft-wrapper.sh 
 ├── LICENSE
 └── scripts/
     ├── backup.sh

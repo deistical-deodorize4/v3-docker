@@ -13,6 +13,7 @@ services:
     volumes:
       - ./files:/srv
       - ./filebrowser:/database
+      - ${HUB_DATA_DIR:-/home/pi/pi02w-hub/data}:/srv/pi02w-hub:ro
     environment:
       FB_BASEURL: "/"
     logging:

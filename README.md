@@ -82,6 +82,7 @@ WG_ADMIN_USERNAME=admin
 WG_ADMIN_PASSWORD=CHANGE_ME
 WG_UI_PORT=51821
 BLE_ADDRESS=
+HUB_DATA_DIR=/home/pi/pi02w-hub/data
 ```
 
 **Change these values:**
@@ -207,6 +208,33 @@ For VPN clients to connect from outside your home, make sure **UDP 51820** is fo
 - Password: `changeme`
 
 Change this password right after logging in (click your username → Change Password).
+
+---
+
+## Running Alongside the Telegram Hub
+
+This stack runs fine on the same Pi as the **pi02w-hub** Telegram bot. Both start automatically on boot:
+
+- **This stack** — `install.sh` enables the Docker service and every container has `restart: unless-stopped`, so `docker compose up -d` needs to be run once and everything comes back after a reboot.
+- **The hub** — installed as a systemd service (`pi02w-hub.service`) that starts at boot too.
+
+Their schedules don't overlap: Watchtower updates containers on the 1st of the month at 7:00 AM, and the hub sends its morning weather report at 9:00 AM.
+
+### Browse the hub's data from FileBrowser
+
+FileBrowser mounts the hub's `data/` directory as a **read-only** `pi02w-hub` folder, so you can grab CSVs and logs from the browser without SSH.
+
+The path is set with `HUB_DATA_DIR` in `.env` (defaults to `/home/pi/pi02w-hub/data`). If the hub lives somewhere else, point it there:
+
+```ini
+HUB_DATA_DIR=/path/to/pi02w-hub/data
+```
+
+After changing `.env`, recreate FileBrowser:
+
+```bash
+docker compose up -d --force-recreate filebrowser
+```
 
 ---
 

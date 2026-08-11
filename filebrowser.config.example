@@ -1,0 +1,17 @@
+# FileBrowser Quantum (v1.5.x) config template.
+# install.sh copies this to filebrowser/config.yaml on first install.
+# Sources are container paths — see docker-compose.yml volume mounts:
+#   ./files:/srv                                  (main file root)
+#   ${HUB_DATA_DIR}:/srv/pi02w-hub:ro             (pi02w-hub data, read-only)
+
+server:
+  sources:
+    - path: /srv
+      name: files
+      config:
+        defaultEnabled: true
+  cacheDir: /home/filebrowser/data/tmp
+
+auth:
+  adminUsername: admin
+  adminPassword: admin

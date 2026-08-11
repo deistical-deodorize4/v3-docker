@@ -2,7 +2,7 @@
 
 | Service | Port | 
 |---------|------|
-|FileBrowser | `8080` | 
+|FileBrowser (Quantum) | `8080` | 
 |Wg-easy | `51822` | 
 |MeshMonitor | `8081` | 
 |BLE Bridge | — | 
@@ -172,7 +172,7 @@ After the admin account is created, remove the `WG_ADMIN_PASSWORD` (and `INIT_*`
 
 For VPN clients to connect from outside your home, make sure **UDP 51820** is forwarded on your router to the Pi's IP (see Step 3).
 
-**FileBrowser:** first login uses `admin` / `admin` — change it right after (Settings → Profile).
+**FileBrowser (Quantum):** first login uses `admin` / `admin` — change it right after (Settings → Profile). Its settings live in `filebrowser/config.yaml` (created from `filebrowser.config.example` by `install.sh`); the `files/` folder is served as the main source and the hub's `pi02w-hub` folder is read-only.
 
 **MeshMonitor login:**
 
@@ -348,6 +348,7 @@ v3-docker/
 ├── .env                 
 ├── .env.default         
 ├── docker-compose.yml   
+├── filebrowser.config.example  ← FileBrowser Quantum config template
 ├── install.sh           
 ├── iptables-nft-wrapper.sh 
 ├── LICENSE

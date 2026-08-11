@@ -1,10 +1,10 @@
 services:
 
   filebrowser:
-    image: filebrowser/filebrowser:v2.63.23
+    image: gtstef/filebrowser:1.5-stable
     container_name: filebrowser
     restart: unless-stopped
-    mem_limit: 32m
+    mem_limit: 64m
     cpus: 0.25
     labels:
       com.centurylinklabs.watchtower.enable: "true"
@@ -12,10 +12,8 @@ services:
       - "8080:80"
     volumes:
       - ./files:/srv
-      - ./filebrowser:/database
+      - ./filebrowser:/home/filebrowser/data
       - ${HUB_DATA_DIR:-/home/pi/pi02w-hub/data}:/srv/pi02w-hub:ro
-    environment:
-      FB_BASEURL: "/"
     logging:
       driver: json-file
       options:

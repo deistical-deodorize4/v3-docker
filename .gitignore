@@ -152,6 +152,9 @@ wg-easy/
 # Syncthing config — runtime data
 syncthing/
 
+# FileBrowser Quantum runtime data (DB, config, cache)
+filebrowser/
+
 # Docker volume data
 portainer_data/
 

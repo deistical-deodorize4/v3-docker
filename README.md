@@ -3,7 +3,7 @@
 | Service | Port | 
 |---------|------|
 |FileBrowser | `8080` | 
-|Wg-easy | `51821` | 
+|Wg-easy | `51822` | 
 |MeshMonitor | `8081` | 
 |BLE Bridge | — | 
 |Watchtower | — |
@@ -150,15 +150,21 @@ Then open these in your browser:
 | Service | URL |
 |---------|-----|
 | FileBrowser | `http://<YOUR_PI_IP>:8080` |
-| WireGuard (wg-easy) | `http://127.0.0.1:51821` (see note below) |
+| WireGuard (wg-easy) | `http://127.0.0.1:51822` (see note below) |
 | MeshMonitor | `http://<YOUR_PI_IP>:8081` |
 
 **WireGuard (wg-easy) note:** the admin UI is bound to `127.0.0.1` only, so from another machine use an SSH tunnel:
 
 ```bash
-ssh -L 51821:127.0.0.1:51821 <pi-user>@<YOUR_PI_IP>
-# then open http://localhost:51821
+ssh -L 51822:127.0.0.1:51822 <pi-user>@<YOUR_PI_IP>
+# then open http://localhost:51822
 ```
+
+> If you see `bind [127.0.0.1]:51822: Address already in use`, that port is taken on **your** computer. Pick any other free port for the local side, e.g.:
+> ```bash
+> ssh -L 9999:127.0.0.1:51822 <pi-user>@<YOUR_PI_IP>
+> # then open http://localhost:9999
+> ```
 
 Log in with the admin username/password set in `.env` (`WG_ADMIN_USERNAME` / `WG_ADMIN_PASSWORD`), or with the account you create in the setup wizard on first start.
 

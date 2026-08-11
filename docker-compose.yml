@@ -43,7 +43,7 @@ services:
       - ./iptables-nft-wrapper.sh:/usr/sbin/iptables-restore:ro
     ports:
       - "${WG_PORT:-51820}:51820/udp"
-      - "127.0.0.1:${WG_UI_PORT:-51821}:51821/tcp"
+      - "127.0.0.1:${WG_UI_PORT:-51822}:51821/tcp"
     cap_add:
       - NET_ADMIN
       - SYS_MODULE

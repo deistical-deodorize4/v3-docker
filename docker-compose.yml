@@ -87,10 +87,9 @@ services:
       - meshmonitor-data:/data
     env_file: .env
     environment:
-      - NODE_ENV=development
-      - ALLOWED_ORIGINS=http://localhost:8081
       - MESHTASTIC_NODE_IP=meshmonitor-ble-bridge
       - MESHTASTIC_NODE_PORT=4403
+      - ALLOWED_ORIGINS=http://localhost:8081,http://192.168.0.15:8081
     logging:
       driver: json-file
       options:

@@ -74,10 +74,12 @@ echo "Docker GPG key fingerprint verified: ${DOCKER_GPG_FINGERPRINT}"
 sudo install -m 0644 "${TMP_DIR}/docker.gpg" /etc/apt/keyrings/docker.gpg
 rm -rf "${TMP_DIR}"
 
-# Set up Docker repository
-echo "Setting up Docker repository..."
+# Set up Docker repository (detect the real architecture instead of
+# hardcoding arm64, so 32-bit armhf systems install the right packages)
+ARCH="$(dpkg --print-architecture)"
+echo "Setting up Docker repository (arch=${ARCH})..."
 echo \
-  "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+  "deb [arch=${ARCH} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
   bookworm stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 

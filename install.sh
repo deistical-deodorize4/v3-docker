@@ -21,10 +21,6 @@ fi
 
 # Create filebrowser directories
 mkdir -p files filebrowser
-if [ ! -f filebrowser/config.yaml ]; then
-    echo "Creating filebrowser/config.yaml from filebrowser.config.example..."
-    cp filebrowser.config.example filebrowser/config.yaml
-fi
 
 # Update package list and system
 echo "Updating system..."
@@ -103,6 +99,14 @@ sudo usermod -aG docker $USER
 echo "Enabling Bluetooth service..."
 sudo systemctl enable bluetooth
 sudo systemctl start bluetooth
+
+# Unblock the Bluetooth adapter (rfkill soft-block persists across reboots
+# via systemd-rfkill, which keeps the adapter powered off otherwise)
+if rfkill list bluetooth | grep -q "Soft blocked: yes"; then
+    echo "Unblocking Bluetooth adapter (rfkill)..."
+    sudo rfkill unblock bluetooth
+fi
+bluetoothctl power on 2>/dev/null || true
 
 # Reduce swappiness to minimize SD card wear (zram handles swap)
 echo "Setting vm.swappiness=10..."

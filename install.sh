@@ -21,6 +21,10 @@ fi
 
 # Create filebrowser directories
 mkdir -p files filebrowser
+if [ ! -f filebrowser/config.yaml ]; then
+    echo "Creating filebrowser/config.yaml from filebrowser.config.example..."
+    cp filebrowser.config.example filebrowser/config.yaml
+fi
 
 # Update package list and system
 echo "Updating system..."

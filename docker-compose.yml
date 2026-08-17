@@ -62,39 +62,16 @@ services:
     cpus: 0.1
     labels:
       com.centurylinklabs.watchtower.enable: "true"
+    ports:
+      # Expose the radio as a Meshtastic TCP stream to the Pi host only,
+      # where the pi02w-hub Telegram bot connects to read solar-node telemetry.
+      - "127.0.0.1:4403:4403"
     volumes:
       - /var/run/dbus:/var/run/dbus
       - /var/lib/bluetooth:/var/lib/bluetooth:ro
     environment:
       - BLE_ADDRESS=${BLE_ADDRESS:-}
     command: ${BLE_ADDRESS:-}
-    networks:
-      - homelab
-
-  meshmonitor:
-    image: ghcr.io/yeraze/meshmonitor:4.14.1
-    container_name: meshmonitor
-    restart: unless-stopped
-    mem_limit: 128m
-    cpus: 0.25
-    depends_on:
-      - meshmonitor-ble-bridge
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-    ports:
-      - "8081:3001"
-    volumes:
-      - meshmonitor-data:/data
-    env_file: .env
-    environment:
-      - MESHTASTIC_NODE_IP=meshmonitor-ble-bridge
-      - MESHTASTIC_NODE_PORT=4403
-      - ALLOWED_ORIGINS=http://localhost:8081,http://192.168.0.15:8081
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     networks:
       - homelab
 
@@ -116,10 +93,6 @@ services:
       com.centurylinklabs.watchtower.enable: "true"
     networks:
       - homelab
-
-volumes:
-  meshmonitor-data:
-    driver: local
 
 networks:
   homelab:

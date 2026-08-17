@@ -1,6 +1,6 @@
 # Pi Zero 2W Homelab (Docker)
 
-A simple Docker stack for your Pi: file manager, VPN, and mesh radio monitoring.
+A simple Docker stack for your Pi: file manager, VPN, and mesh radio bridge.
 
 ## What's in the stack
 
@@ -8,9 +8,14 @@ A simple Docker stack for your Pi: file manager, VPN, and mesh radio monitoring.
 |---------|-------------|------|
 | **FileBrowser (Quantum)** | Web file manager | `8080` |
 | **wg-easy** | WireGuard VPN (access your Pi from anywhere) | `51822` (admin UI, local only) + `51820/udp` (VPN) |
-| **MeshMonitor** | Meshtastic mesh radio dashboard | `8081` |
-| BLE Bridge | Connects MeshMonitor to your radio over Bluetooth | — |
+| **BLE Bridge** | Exposes your Meshtastic radio over TCP (for the pi02w-hub Telegram bot) | `127.0.0.1:4403` |
 | Watchtower | Auto-updates containers monthly | — |
+
+> **Note:** MeshMonitor (the web dashboard) was removed from the stack. The BLE
+> bridge now publishes its Meshtastic TCP stream on the Pi's loopback only
+> (`127.0.0.1:4403`), and the **pi02w-hub Telegram bot** connects to it directly
+> to read your solar node's telemetry (temp, humidity, battery, …). Ask the bot
+> with the `📡 Mesh` button or `/mesh`.
 
 ## Quick start
 
@@ -56,10 +61,9 @@ hostname -I
 | Service | Address | Login |
 |---------|---------|-------|
 | FileBrowser | `http://<PI_IP>:8080` | `admin` / `admin` |
-| MeshMonitor | `http://<PI_IP>:8081` | `admin` / `changeme` |
 | wg-easy UI | `http://127.0.0.1:51822` (only on the Pi) | from `.env` |
 
-**Change the default passwords right after logging in.** FileBrowser: Settings → Profile. MeshMonitor: click your username → Change Password.
+**Change the default passwords right after logging in.** FileBrowser: Settings → Profile.
 
 ### Access wg-easy from your computer
 
@@ -76,11 +80,15 @@ ssh -L 51822:127.0.0.1:51822 pi@<PI_IP>
 2. On your router, forward **UDP `51820`** to your Pi's IP
 3. Create a client in the wg-easy UI and scan its QR code with the WireGuard app
 
-Once connected, you can open FileBrowser/MeshMonitor as if you were on your home network. **Don't** forward port `8080` or `8081` to the internet — the VPN is the safe way in.
+Once connected, you can open FileBrowser as if you were on your home network. **Don't** forward port `8080` or `4403` to the internet — the VPN is the safe way in.
 
 ## Your Meshtastic radio (BLE)
 
-Find its Bluetooth address:
+The BLE bridge connects to your Meshtastic radio over Bluetooth and exposes it as a
+Meshtastic TCP stream on the Pi's loopback (`127.0.0.1:4403`). The pi02w-hub
+Telegram bot connects there for solar-node telemetry.
+
+Find your radio's Bluetooth address:
 
 ```bash
 docker run --rm --privileged -v /var/run/dbus:/var/run/dbus \
@@ -93,11 +101,17 @@ Copy the `AA:BB:CC:DD:EE:FF` address into `.env` as `BLE_ADDRESS`, then restart:
 docker compose up -d
 ```
 
+Verify the bridge is listening (the bot connects to this):
+
+```bash
+ss -ltn | grep 4403   # 127.0.0.1:4403 should be LISTEN
+```
+
 ## Useful commands
 
 ```bash
 docker compose ps                 # is everything running?
-docker compose logs meshmonitor   # see logs for one service
+docker compose logs filebrowser   # see logs for one service
 docker compose down               # stop everything
 docker compose up -d              # start everything again
 ```
